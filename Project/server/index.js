@@ -15,21 +15,11 @@ const ICON_DIR = path.join(DATA_DIR, 'icons');
 const DB_PATH = path.join(DATA_DIR, 'db.json');
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'change-me';
 
-// 安全にフォルダ作成
-try {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-} catch (err) {
-  if (err.code !== 'EEXIST') throw err;
-}
-
-try {
-  fs.mkdirSync(ICON_DIR, { recursive: true });
-} catch (err) {
-  if (err.code !== 'EEXIST') throw err;
-}
+fs.mkdirSync(DATA_DIR, { recursive: true });
+fs.mkdirSync(ICON_DIR, { recursive: true });
 
 const adapter = new JSONFile(DB_PATH);
-const db = new Low(adapter, {}); // 初期データを渡す！
+const db = new Low(adapter, {});
 
 const app = express();
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -39,6 +29,8 @@ const upload = multer({ dest: ICON_DIR, limits: { fileSize: 2 * 1024 * 1024 } })
 
 app.post('/upload-icon', upload.single('icon'), async (req, res) => {
   await db.read();
+  db.data ||= { players: [] };
+
   const nickname = req.body.nickname;
   if (!nickname || !req.file) return res.status(400).json({ ok: false });
 
@@ -48,7 +40,7 @@ app.post('/upload-icon', upload.single('icon'), async (req, res) => {
   fs.renameSync(req.file.path, dst);
   const iconUrl = `/icons/${newName}`;
 
-  const user = db.data.players.find(p => p.nickname === nickname);
+  let user = db.data.players.find(p => p.nickname === nickname);
   if (user) user.icon = iconUrl;
   else db.data.players.push({ nickname, coins: 0, tapValue: 1, auto: 0, taps: 0, icon: iconUrl });
 
@@ -58,7 +50,7 @@ app.post('/upload-icon', upload.single('icon'), async (req, res) => {
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
-const clients = new Map(); // ws -> nickname
+const clients = new Map();
 
 (async () => {
   await db.read();
@@ -79,7 +71,7 @@ const clients = new Map(); // ws -> nickname
     clients.set(ws, null);
 
     const ranks = _.orderBy(db.data.players, ['taps'], ['desc']).slice(0, 100);
-    const chats = db.data.chat.slice(-100);
+    const chats = Array.isArray(db.data.chat) ? db.data.chat.slice(-100) : [];
     ws.send(JSON.stringify({ type: 'init', shop: db.data.shop, ranks, chats }));
 
     ws.on('message', async (raw) => {
@@ -87,24 +79,40 @@ const clients = new Map(); // ws -> nickname
       try { msg = JSON.parse(raw); } catch { return; }
 
       await db.read();
+      db.data ||= { players: [], bans: [], chat: [], shop: [] };
 
       if (msg.type === 'setName') {
-        const nickname = msg.nickname.trim();
-        if (!nickname) return ws.send(JSON.stringify({ type: 'setNameResult', ok: false, reason: 'empty' }));
-        if (nickname.toLowerCase() === 'admin' && msg.adminToken !== ADMIN_TOKEN)
-          return ws.send(JSON.stringify({ type: 'setNameResult', ok: false, reason: 'admin_auth' }));
-        if (db.data.bans.includes(nickname))
-          return ws.send(JSON.stringify({ type: 'setNameResult', ok: false, reason: 'banned' }));
-        if (clients.has(ws) && Array.from(clients.values()).includes(nickname))
-          return ws.send(JSON.stringify({ type: 'setNameResult', ok: false, reason: 'inuse' }));
+        const nickname = msg.nickname?.trim();
+        if (!nickname) {
+          ws.send(JSON.stringify({ type: 'setNameResult', ok: false, reason: 'empty' }));
+          return;
+        }
+
+        if (nickname.toLowerCase() === 'admin' && msg.adminToken !== ADMIN_TOKEN) {
+          ws.send(JSON.stringify({ type: 'setNameResult', ok: false, reason: 'admin_auth' }));
+          return;
+        }
+
+        if (db.data.bans.includes(nickname)) {
+          ws.send(JSON.stringify({ type: 'setNameResult', ok: false, reason: 'banned' }));
+          return;
+        }
+
+        const isUsed = Array.from(clients.values()).filter(Boolean).includes(nickname);
+        if (isUsed) {
+          ws.send(JSON.stringify({ type: 'setNameResult', ok: false, reason: 'inuse' }));
+          return;
+        }
 
         let user = db.data.players.find(p => p.nickname === nickname);
         if (!user) {
           user = { nickname, coins: 0, tapValue: 1, auto: 0, taps: 0, icon: null };
           db.data.players.push(user);
         }
+
         clients.set(ws, nickname);
         await db.write();
+
         ws.send(JSON.stringify({ type: 'setNameResult', ok: true, nickname }));
         broadcastRanks();
         return;
@@ -126,8 +134,10 @@ const clients = new Map(); // ws -> nickname
 
       if (msg.type === 'buy') {
         const item = db.data.shop.find(i => i.id === msg.itemId);
-        if (!item || user.coins < item.price)
-          return ws.send(JSON.stringify({ type: 'buyResult', ok: false, reason: 'invalid_or_not_enough' }));
+        if (!item || user.coins < item.price) {
+          ws.send(JSON.stringify({ type: 'buyResult', ok: false, reason: 'invalid_or_not_enough' }));
+          return;
+        }
 
         user.coins -= item.price;
         if (item.type === 'tap') user.tapValue += item.value;
@@ -177,7 +187,6 @@ const clients = new Map(); // ws -> nickname
     });
   });
 
-  // ✅ 修正済みの setInterval
   setInterval(async () => {
     try {
       await db.read();
