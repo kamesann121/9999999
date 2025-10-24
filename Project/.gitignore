@@ -1,0 +1,4 @@
+node_modules/
+data/icons/
+data/db.json
+.env
