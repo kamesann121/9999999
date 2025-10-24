@@ -61,7 +61,7 @@ function sendChat() {
 
 ws.onmessage = (ev) => {
   const data = JSON.parse(ev.data);
-  console.log('受信:', data); // ✅ すべての受信データを確認
+  console.log('受信:', data);
 
   if (data.type === 'init') {
     shop = data.shop || [];
@@ -72,14 +72,16 @@ ws.onmessage = (ev) => {
   }
 
   if (data.type === 'setNameResult') {
-    console.log('setNameResult:', data); // ✅ デバッグログ追加
+    console.log('setNameResult:', data);
     if (data.ok) {
       myNickname = data.nickname;
+      localStorage.setItem('nickname', myNickname); // ✅ 保存！
       meNameSpan.textContent = `あなた: ${myNickname}`;
       nicknameInput.value = '';
       appendSystem(`ニックネーム設定: ${myNickname}`);
     } else {
       myNickname = null;
+      localStorage.removeItem('nickname'); // ✅ 失敗時は削除
       if (data.reason === 'inuse') appendSystem('そのニックネームは使用中です');
       else if (data.reason === 'banned') appendSystem('そのニックネームはBANされています');
       else if (data.reason === 'admin_auth') appendSystem('admin認証失敗');
@@ -166,3 +168,13 @@ function appendSystem(text) {
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+
+// ✅ ページ読み込み時にニックネーム復元！
+window.addEventListener('load', () => {
+  const savedNick = localStorage.getItem('nickname');
+  if (savedNick) {
+    ws.addEventListener('open', () => {
+      ws.send(JSON.stringify({ type: 'setName', nickname: savedNick }));
+    });
+  }
+});
