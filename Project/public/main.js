@@ -13,6 +13,7 @@ const rankList = $('rankList');
 setNameBtn.onclick = () => {
   const nick = nicknameInput.value.trim();
   if (!nick) return alert('ニックネームを入力してください');
+  if (ws.readyState !== WebSocket.OPEN) return alert('接続が切れています');
   ws.send(JSON.stringify({ type: 'setName', nickname: nick }));
 };
 
@@ -60,15 +61,18 @@ function sendChat() {
 
 ws.onmessage = (ev) => {
   const data = JSON.parse(ev.data);
+  console.log('受信:', data); // ✅ すべての受信データを確認
+
   if (data.type === 'init') {
     shop = data.shop || [];
     renderShop();
     renderRanks(data.ranks || []);
     renderChats(data.chats || []);
-    // ✅ 警告削除：ニックネームは setNameResult で処理する
     return;
   }
+
   if (data.type === 'setNameResult') {
+    console.log('setNameResult:', data); // ✅ デバッグログ追加
     if (data.ok) {
       myNickname = data.nickname;
       meNameSpan.textContent = `あなた: ${myNickname}`;
@@ -83,6 +87,7 @@ ws.onmessage = (ev) => {
     }
     return;
   }
+
   if (data.type === 'tap') {
     if (data.nickname === myNickname) {
       coinsEl.textContent = `コイン: ${data.coins}`;
@@ -91,18 +96,22 @@ ws.onmessage = (ev) => {
     }
     return;
   }
+
   if (data.type === 'ranks') {
     renderRanks(data.ranks);
     return;
   }
+
   if (data.type === 'chat') {
     addChatMessage(data.nickname, data.icon, data.text, data.ts);
     return;
   }
+
   if (data.type === 'system') {
     appendSystem(data.text);
     return;
   }
+
   if (data.type === 'banned') {
     if (data.nickname === myNickname) {
       appendSystem('あなたはBANされました');
@@ -110,6 +119,7 @@ ws.onmessage = (ev) => {
     }
     return;
   }
+
   if (data.type === 'buyResult') {
     appendSystem(data.ok ? '購入成功' : '購入失敗: ' + (data.reason || ''));
     return;
