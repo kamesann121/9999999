@@ -1,91 +1,84 @@
-const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
+const WS_URL = location.hostname.includes('localhost')
+  ? 'ws://localhost:3000'
+  : 'wss://' + location.host;
+
+const ws = new WebSocket(WS_URL);
 let myNickname = null;
-let myIcon = null;
-let shop = [];
 
 const $ = id => document.getElementById(id);
-const nicknameInput = $('nickname'), setNameBtn = $('setName'), meNameSpan = $('meName');
-const coinsEl = $('coins'), tapValueEl = $('tapValue'), myTapsEl = $('myTaps');
-const tapImage = $('tapImage'), iconFile = $('iconFile'), uploadIconBtn = $('uploadIcon');
-const shopList = $('shopList'), chatLog = $('chatLog'), chatInput = $('chatInput'), sendChatBtn = $('sendChat');
+const nicknameInput = $('nickname');
+const setNameBtn = $('setName');
+const meNameSpan = $('meName');
+const coinsEl = $('coins');
+const tapValueEl = $('tapValue');
+const myTapsEl = $('myTaps');
+const tapImage = $('tapImage');
+const iconFile = $('iconFile');
+const uploadIconBtn = $('uploadIcon');
+const shopList = $('shopList');
+const chatLog = $('chatLog');
+const chatInput = $('chatInput');
+const sendChatBtn = $('sendChat');
 const rankList = $('rankList');
 
 setNameBtn.onclick = () => {
   const nick = nicknameInput.value.trim();
-  if (!nick) return alert('ニックネームを入力してください');
-  if (ws.readyState !== WebSocket.OPEN) return alert('接続が切れています');
+  if (!nick) return alert('ニックネームを入力してね！');
   ws.send(JSON.stringify({ type: 'setName', nickname: nick }));
 };
 
 uploadIconBtn.onclick = async () => {
-  if (!myNickname) return alert('先にニックネームを設定してください');
+  if (!myNickname) return alert('先にニックネームを設定してね！');
   const f = iconFile.files[0];
-  if (!f) return alert('ファイルを選んでください');
+  if (!f) return alert('ファイルを選んでね！');
   const fd = new FormData();
   fd.append('icon', f);
   fd.append('nickname', myNickname);
   const res = await fetch('/upload-icon', { method: 'POST', body: fd });
   const json = await res.json();
   if (json.ok) {
-    myIcon = json.icon;
-    appendSystem('アイコンをアップロードしました');
+    appendSystem('アイコンをアップロードしたよ！');
   } else {
-    appendSystem('アップロード失敗');
+    appendSystem('アップロード失敗...');
   }
 };
 
-tapImage.addEventListener('mousedown', () => sendTap());
-tapImage.addEventListener('touchstart', (e) => { e.preventDefault(); sendTap(); }, { passive: false });
-
-function sendTap() {
-  if (!myNickname) {
-    appendSystem('タップするにはニックネームを設定してください');
-    return;
-  }
+tapImage.addEventListener('click', () => {
+  if (!myNickname) return alert('ニックネームを設定してね！');
   ws.send(JSON.stringify({ type: 'tap' }));
-}
+});
 
 sendChatBtn.onclick = sendChat;
-chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
+chatInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendChat();
+});
 
 function sendChat() {
-  if (!myNickname) {
-    appendSystem('チャットするにはニックネームを設定してください');
-    return;
-  }
-  const txt = chatInput.value.trim();
-  if (!txt) return;
-  ws.send(JSON.stringify({ type: 'chat', text: txt }));
+  if (!myNickname) return alert('ニックネームを設定してね！');
+  const text = chatInput.value.trim();
+  if (!text) return;
+  ws.send(JSON.stringify({ type: 'chat', text }));
   chatInput.value = '';
 }
 
-ws.onmessage = (ev) => {
+ws.onmessage = ev => {
   const data = JSON.parse(ev.data);
-  console.log('受信:', data);
 
   if (data.type === 'init') {
-    shop = data.shop || [];
-    renderShop();
-    renderRanks(data.ranks || []);
-    renderChats(data.chats || []);
+    renderShop(data.shop);
+    renderRanks(data.ranks);
+    renderChats(data.chats);
     return;
   }
 
   if (data.type === 'setNameResult') {
-    console.log('setNameResult:', data);
     if (data.ok) {
       myNickname = data.nickname;
-      localStorage.setItem('nickname', myNickname);
       meNameSpan.textContent = `あなた: ${myNickname}`;
       nicknameInput.value = '';
       appendSystem(`ニックネーム設定: ${myNickname}`);
     } else {
-      myNickname = null;
-      localStorage.removeItem('nickname');
-      if (data.reason === 'inuse') appendSystem('そのニックネームは使用中です');
-      else if (data.reason === 'banned') appendSystem('そのニックネームはBANされています');
-      else if (data.reason === 'admin_auth') appendSystem('admin認証失敗');
-      else appendSystem('ニックネーム設定失敗');
+      appendSystem('ニックネーム設定失敗');
     }
     return;
   }
@@ -123,42 +116,48 @@ ws.onmessage = (ev) => {
   }
 
   if (data.type === 'buyResult') {
-    appendSystem(data.ok ? '購入成功' : '購入失敗: ' + (data.reason || ''));
+    appendSystem(data.ok ? '購入成功！' : '購入失敗...');
     return;
   }
 };
 
-function renderShop() {
-  shopList.innerHTML = shop.map(it => {
-    return `<div class="item" data-id="${it.id}">
-      <div>${escapeHtml(it.name)} - ${it.price}コイン</div>
-      <button class="buy" data-id="${it.id}">買う</button>
-    </div>`;
-  }).join('');
-  shopList.querySelectorAll('.buy').forEach(btn => btn.addEventListener('click', () => {
-    const id = btn.dataset.id;
-    ws.send(JSON.stringify({ type: 'buy', itemId: id }));
-  }));
+function renderShop(shop) {
+  shopList.innerHTML = shop.map(item => `
+    <div class="item">
+      <div>${item.name} - ${item.price}コイン</div>
+      <button onclick="buyItem('${item.id}')">買う</button>
+    </div>
+  `).join('');
+}
+
+function buyItem(id) {
+  ws.send(JSON.stringify({ type: 'buy', itemId: id }));
 }
 
 function renderRanks(ranks) {
-  rankList.innerHTML = (ranks || []).map(r => {
-    const icon = r.icon ? `<img src="${r.icon}" alt="">` : `<img src="https://via.placeholder.com/36?text=?">`;
-    return `<li class="rank-item">${icon}<div><strong>${escapeHtml(r.nickname)}</strong><div>タップ: ${r.taps} / コイン: ${r.coins}</div></div></li>`;
-  }).join('');
+  rankList.innerHTML = ranks.map(r => `
+    <li>${r.nickname} - タップ: ${r.taps} / コイン: ${r.coins}</li>
+  `).join('');
 }
 
 function renderChats(chats) {
   chatLog.innerHTML = '';
-  (chats || []).forEach(c => addChatMessage(c.nickname, c.icon, c.text, c.ts * 1000));
+  chats.forEach(c => addChatMessage(c.nickname, c.icon, c.text, c.ts));
 }
 
 function addChatMessage(nick, icon, text, ts) {
   const time = new Date(ts).toLocaleTimeString();
-  const img = icon ? `<img src="${icon}" alt="">` : `<img src="https://via.placeholder.com/40?text=?">`;
-  chatLog.insertAdjacentHTML('beforeend', `<div class="chat-entry">${img}<div><div class="meta"><strong>${escapeHtml(nick)}</strong> <span>${time}</span></div><div class="text">${escapeHtml(text)}</div></div></div>`);
+  const entry = document.createElement('div');
+  entry.className = 'chat-entry';
+  entry.innerHTML = `<strong>${nick}</strong> <span>${time}</span><div>${text}</div>`;
+  chatLog.appendChild(entry);
   chatLog.scrollTop = chatLog.scrollHeight;
 }
 
 function appendSystem(text) {
-  chatLog.insertAdjacentHTML('beforeend', `<div class="chat-entry"><div style="width:40px;height:40px;border-radius:50%;background:#ddd;"></div><
+  const entry = document.createElement('div');
+  entry.className = 'chat-entry';
+  entry.innerHTML = `<em>system</em>: ${text}`;
+  chatLog.appendChild(entry);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
