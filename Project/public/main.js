@@ -21,7 +21,7 @@ const chatInput = $('chatInput');
 const sendChatBtn = $('sendChat');
 const rankList = $('rankList');
 
-// WebSocketが開いたら保存済みニックネームを送信
+// WebSocket接続後に保存されたニックネームを送信
 ws.onopen = () => {
   const savedNick = localStorage.getItem('nickname');
   if (savedNick) {
@@ -31,12 +31,14 @@ ws.onopen = () => {
   }
 };
 
+// ニックネーム設定ボタン
 setNameBtn.onclick = () => {
   const nick = nicknameInput.value.trim();
   if (!nick) return alert('ニックネームを入力してね！');
   ws.send(JSON.stringify({ type: 'setName', nickname: nick }));
 };
 
+// アイコンアップロード
 uploadIconBtn.onclick = async () => {
   if (!myNickname) return alert('先にニックネームを設定してね！');
   const f = iconFile.files[0];
@@ -53,11 +55,13 @@ uploadIconBtn.onclick = async () => {
   }
 };
 
+// タップ処理
 tapImage.addEventListener('click', () => {
   if (!myNickname) return alert('ニックネームを設定してね！');
   ws.send(JSON.stringify({ type: 'tap' }));
 });
 
+// チャット送信
 sendChatBtn.onclick = sendChat;
 chatInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') sendChat();
@@ -71,6 +75,7 @@ function sendChat() {
   chatInput.value = '';
 }
 
+// WebSocketメッセージ受信
 ws.onmessage = ev => {
   const data = JSON.parse(ev.data);
 
@@ -84,7 +89,7 @@ ws.onmessage = ev => {
   if (data.type === 'setNameResult') {
     if (data.ok) {
       myNickname = data.nickname;
-      localStorage.setItem('nickname', myNickname); // 保存！
+      localStorage.setItem('nickname', myNickname);
       meNameSpan.textContent = `あなた: ${myNickname}`;
       nicknameInput.value = '';
       appendSystem(`ニックネーム設定: ${myNickname}`);
@@ -132,6 +137,7 @@ ws.onmessage = ev => {
   }
 };
 
+// ショップ表示
 function renderShop(shop) {
   shopList.innerHTML = shop.map(item => `
     <div class="item">
@@ -145,12 +151,14 @@ function buyItem(id) {
   ws.send(JSON.stringify({ type: 'buy', itemId: id }));
 }
 
+// ランキング表示
 function renderRanks(ranks) {
   rankList.innerHTML = ranks.map(r => `
     <li>${r.nickname} - タップ: ${r.taps} / コイン: ${r.coins}</li>
   `).join('');
 }
 
+// チャット表示
 function renderChats(chats) {
   chatLog.innerHTML = '';
   chats.forEach(c => addChatMessage(c.nickname, c.icon, c.text, c.ts));
