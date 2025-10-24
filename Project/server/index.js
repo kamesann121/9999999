@@ -15,6 +15,7 @@ const ICON_DIR = path.join(DATA_DIR, 'icons');
 const DB_PATH = path.join(DATA_DIR, 'db.json');
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'change-me';
 
+// 安全にフォルダ作成
 try {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 } catch (err) {
@@ -28,7 +29,7 @@ try {
 }
 
 const adapter = new JSONFile(DB_PATH);
-const db = new Low(adapter, {}); // ← 初期データを渡すように修正！
+const db = new Low(adapter, {}); // 初期データを渡す！
 
 const app = express();
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -176,13 +177,21 @@ const clients = new Map(); // ws -> nickname
     });
   });
 
+  // ✅ 修正済みの setInterval
   setInterval(async () => {
-    await db.read();
-    for (const user of db.data.players) {
-      if (user.auto > 0) user.coins += user.auto;
+    try {
+      await db.read();
+      db.data ||= { players: [] };
+      if (Array.isArray(db.data.players)) {
+        for (const user of db.data.players) {
+          if (user.auto > 0) user.coins += user.auto;
+        }
+        await db.write();
+        broadcastRanks();
+      }
+    } catch (err) {
+      console.error('Error in auto income interval:', err);
     }
-    await db.write();
-    broadcastRanks();
   }, 1000);
 
   function broadcast(obj) {
