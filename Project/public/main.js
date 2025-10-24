@@ -3,72 +3,35 @@ const WS_URL = location.hostname.includes('localhost')
   : 'wss://' + location.host;
 
 const ws = new WebSocket(WS_URL);
-let myNickname = null;
 
 const $ = id => document.getElementById(id);
-const nicknameInput = $('nickname');
-const setNameBtn = $('setName');
-const meNameSpan = $('meName');
 const coinsEl = $('coins');
 const tapValueEl = $('tapValue');
 const myTapsEl = $('myTaps');
 const tapImage = $('tapImage');
-const iconFile = $('iconFile');
-const uploadIconBtn = $('uploadIcon');
 const shopList = $('shopList');
 const chatLog = $('chatLog');
 const chatInput = $('chatInput');
 const sendChatBtn = $('sendChat');
 const rankList = $('rankList');
 
-// WebSocket接続後に保存されたニックネームを送信
+// WebSocket接続完了時の初期化
 ws.onopen = () => {
-  const savedNick = localStorage.getItem('nickname');
-  if (savedNick) {
-    myNickname = savedNick;
-    meNameSpan.textContent = `あなた: ${myNickname}`;
-    ws.send(JSON.stringify({ type: 'setName', nickname: myNickname }));
-  }
+  console.log('WebSocket connected');
 };
 
-// ニックネーム設定ボタン
-setNameBtn.onclick = () => {
-  const nick = nicknameInput.value.trim();
-  if (!nick) return alert('ニックネームを入力してね！');
-  ws.send(JSON.stringify({ type: 'setName', nickname: nick }));
-};
-
-// アイコンアップロード
-uploadIconBtn.onclick = async () => {
-  if (!myNickname) return alert('先にニックネームを設定してね！');
-  const f = iconFile.files[0];
-  if (!f) return alert('ファイルを選んでね！');
-  const fd = new FormData();
-  fd.append('icon', f);
-  fd.append('nickname', myNickname);
-  const res = await fetch('/upload-icon', { method: 'POST', body: fd });
-  const json = await res.json();
-  if (json.ok) {
-    appendSystem('アイコンをアップロードしたよ！');
-  } else {
-    appendSystem('アップロード失敗...');
-  }
-};
-
-// タップ処理
+// タップ処理（名前不要）
 tapImage.addEventListener('click', () => {
-  if (!myNickname) return alert('ニックネームを設定してね！');
   ws.send(JSON.stringify({ type: 'tap' }));
 });
 
-// チャット送信
+// チャット送信（名前不要）
 sendChatBtn.onclick = sendChat;
 chatInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') sendChat();
 });
 
 function sendChat() {
-  if (!myNickname) return alert('ニックネームを設定してね！');
   const text = chatInput.value.trim();
   if (!text) return;
   ws.send(JSON.stringify({ type: 'chat', text }));
@@ -80,31 +43,16 @@ ws.onmessage = ev => {
   const data = JSON.parse(ev.data);
 
   if (data.type === 'init') {
-    renderShop(data.shop);
-    renderRanks(data.ranks);
-    renderChats(data.chats);
-    return;
-  }
-
-  if (data.type === 'setNameResult') {
-    if (data.ok) {
-      myNickname = data.nickname;
-      localStorage.setItem('nickname', myNickname);
-      meNameSpan.textContent = `あなた: ${myNickname}`;
-      nicknameInput.value = '';
-      appendSystem(`ニックネーム設定: ${myNickname}`);
-    } else {
-      appendSystem('ニックネーム設定失敗');
-    }
+    renderShop(data.shop || []);
+    renderRanks(data.ranks || []);
+    renderChats(data.chats || []);
     return;
   }
 
   if (data.type === 'tap') {
-    if (data.nickname === myNickname) {
-      coinsEl.textContent = `コイン: ${data.coins}`;
-      myTapsEl.textContent = `タップ数: ${data.taps}`;
-      tapValueEl.textContent = `${data.tap_value} / タップ`;
-    }
+    coinsEl.textContent = `コイン: ${data.coins}`;
+    myTapsEl.textContent = `タップ数: ${data.taps}`;
+    tapValueEl.textContent = `${data.tap_value} / タップ`;
     return;
   }
 
@@ -114,20 +62,12 @@ ws.onmessage = ev => {
   }
 
   if (data.type === 'chat') {
-    addChatMessage(data.nickname, data.icon, data.text, data.ts);
+    addChatMessage(data.nickname || '匿名', data.icon, data.text, data.ts);
     return;
   }
 
   if (data.type === 'system') {
     appendSystem(data.text);
-    return;
-  }
-
-  if (data.type === 'banned') {
-    if (data.nickname === myNickname) {
-      appendSystem('あなたはBANされました');
-      ws.close();
-    }
     return;
   }
 
@@ -154,14 +94,14 @@ function buyItem(id) {
 // ランキング表示
 function renderRanks(ranks) {
   rankList.innerHTML = ranks.map(r => `
-    <li>${r.nickname} - タップ: ${r.taps} / コイン: ${r.coins}</li>
+    <li>${r.nickname || '匿名'} - タップ: ${r.taps} / コイン: ${r.coins}</li>
   `).join('');
 }
 
 // チャット表示
 function renderChats(chats) {
   chatLog.innerHTML = '';
-  chats.forEach(c => addChatMessage(c.nickname, c.icon, c.text, c.ts));
+  chats.forEach(c => addChatMessage(c.nickname || '匿名', c.icon, c.text, c.ts));
 }
 
 function addChatMessage(nick, icon, text, ts) {
