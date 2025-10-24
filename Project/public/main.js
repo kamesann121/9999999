@@ -21,6 +21,16 @@ const chatInput = $('chatInput');
 const sendChatBtn = $('sendChat');
 const rankList = $('rankList');
 
+// ニックネームを保存してたら読み込んで送信
+const savedNick = localStorage.getItem('nickname');
+if (savedNick) {
+  myNickname = savedNick;
+  meNameSpan.textContent = `あなた: ${myNickname}`;
+  ws.addEventListener('open', () => {
+    ws.send(JSON.stringify({ type: 'setName', nickname: myNickname }));
+  });
+}
+
 setNameBtn.onclick = () => {
   const nick = nicknameInput.value.trim();
   if (!nick) return alert('ニックネームを入力してね！');
@@ -74,6 +84,7 @@ ws.onmessage = ev => {
   if (data.type === 'setNameResult') {
     if (data.ok) {
       myNickname = data.nickname;
+      localStorage.setItem('nickname', myNickname); // ← 保存！
       meNameSpan.textContent = `あなた: ${myNickname}`;
       nicknameInput.value = '';
       appendSystem(`ニックネーム設定: ${myNickname}`);
