@@ -1,57 +1,56 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <title>勉強</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="main.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>べんきょう</title>
+  <link rel="stylesheet" href="main.css" />
 </head>
 <body>
-  <div id="app">
-    <header>
-      <div id="leftHeader">
-        <input id="nickname" placeholder="ニックネーム" maxlength="32">
-        <button id="setName">設定</button>
-        <span id="meName"></span>
+  <header>
+    <h1>💧 Tap Shop Chat</h1>
+    <div class="nickname-area">
+      <input id="nickname" placeholder="ニックネーム" maxlength="32" />
+      <button id="setName">設定</button>
+      <span id="meName"></span>
+    </div>
+  </header>
+
+  <main>
+    <section class="game-area">
+      <div class="tap-zone">
+        <img id="tapImage" src="https://via.placeholder.com/300x200.png?text=Tap!" alt="Tap" />
+        <div class="tap-info">
+          <div id="coins">コイン: 0</div>
+          <div id="tapValue">1 / タップ</div>
+          <div id="myTaps">タップ数: 0</div>
+        </div>
       </div>
-      <div id="rightHeader">
-        <div id="coins">コイン: 0</div>
-        <div id="tapValue">1 / タップ</div>
+
+      <div class="shop-zone">
+        <h2>ショップ</h2>
+        <div id="shopList"></div>
       </div>
-    </header>
+    </section>
 
-    <main>
-      <section id="game">
-        <div id="playArea">
-          <img id="tapImage" src="https://via.placeholder.com/360x240.png?text=タップしてね" alt="tap" />
-          <div id="tapInfo">
-            <div id="myTaps">タップ数: 0</div>
-            <div>
-              <input type="file" id="iconFile" accept="image/*">
-              <button id="uploadIcon">アイコンアップロード</button>
-            </div>
-          </div>
-        </div>
+    <section class="chat-area">
+      <h2>チャット</h2>
+      <div id="chatLog" class="chat-log"></div>
+      <div class="chat-form">
+        <input id="chatInput" placeholder="メッセージを入力" maxlength="200" />
+        <button id="sendChat">送信</button>
+      </div>
 
-        <div id="shop">
-          <h3>ショップ</h3>
-          <div id="shopList"></div>
-        </div>
-      </section>
+      <h2>ランキング</h2>
+      <ol id="rankList" class="rank-list"></ol>
+    </section>
+  </main>
 
-      <section id="chat">
-        <div id="chatLog" class="chatLog"></div>
-        <div class="chatForm">
-          <input id="chatInput" placeholder="メッセージを入力" maxlength="500">
-          <button id="sendChat">送信</button>
-        </div>
-        <h4>ランキング</h4>
-        <ol id="rankList"></ol>
-      </section>
-    </main>
-  </div>
+  <footer>
+    <input type="file" id="iconFile" accept="image/*" />
+    <button id="uploadIcon">アイコンアップロード</button>
+  </footer>
 
-  <!-- ✅ JavaScriptは最後に読み込む！ -->
   <script src="main.js"></script>
 </body>
 </html>
