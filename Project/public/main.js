@@ -65,9 +65,7 @@ ws.onmessage = (ev) => {
     renderShop();
     renderRanks(data.ranks || []);
     renderChats(data.chats || []);
-    if (!myNickname) {
-      appendSystem('ニックネームを設定してください');
-    }
+    // ✅ 警告削除：ニックネームは setNameResult で処理する
     return;
   }
   if (data.type === 'setNameResult') {
