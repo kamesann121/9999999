@@ -1,1 +1,20 @@
-
+{
+  "name": "tap-shop-chat",
+  "version": "1.0.0",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.13.0",
+    "multer": "^2.0.0",
+    "lowdb": "^6.0.1",
+    "lodash": "^4.17.21",
+    "nanoid": "^4.0.0"
+  }
+}
