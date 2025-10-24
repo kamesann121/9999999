@@ -21,15 +21,15 @@ const chatInput = $('chatInput');
 const sendChatBtn = $('sendChat');
 const rankList = $('rankList');
 
-// ニックネームを保存してたら読み込んで送信
-const savedNick = localStorage.getItem('nickname');
-if (savedNick) {
-  myNickname = savedNick;
-  meNameSpan.textContent = `あなた: ${myNickname}`;
-  ws.addEventListener('open', () => {
+// WebSocketが開いたら保存済みニックネームを送信
+ws.onopen = () => {
+  const savedNick = localStorage.getItem('nickname');
+  if (savedNick) {
+    myNickname = savedNick;
+    meNameSpan.textContent = `あなた: ${myNickname}`;
     ws.send(JSON.stringify({ type: 'setName', nickname: myNickname }));
-  });
-}
+  }
+};
 
 setNameBtn.onclick = () => {
   const nick = nicknameInput.value.trim();
@@ -84,7 +84,7 @@ ws.onmessage = ev => {
   if (data.type === 'setNameResult') {
     if (data.ok) {
       myNickname = data.nickname;
-      localStorage.setItem('nickname', myNickname); // ← 保存！
+      localStorage.setItem('nickname', myNickname); // 保存！
       meNameSpan.textContent = `あなた: ${myNickname}`;
       nicknameInput.value = '';
       appendSystem(`ニックネーム設定: ${myNickname}`);
