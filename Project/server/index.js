@@ -98,10 +98,13 @@ const clients = new Map();
           return;
         }
 
-        const isUsed = Array.from(clients.values()).filter(Boolean).includes(nickname);
-        if (isUsed) {
-          ws.send(JSON.stringify({ type: 'setNameResult', ok: false, reason: 'inuse' }));
-          return;
+        // 👇 ここで同じ名前の古い接続を切断！
+        for (const [client, name] of clients.entries()) {
+          if (name === nickname) {
+            client.send(JSON.stringify({ type: 'system', text: '他の接続が切断されました' }));
+            client.close();
+            clients.delete(client);
+          }
         }
 
         let user = db.data.players.find(p => p.nickname === nickname);
