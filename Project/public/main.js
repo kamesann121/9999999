@@ -1,4 +1,3 @@
-// public/main.js
 const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
 let myNickname = null;
 let myIcon = null;
@@ -13,12 +12,12 @@ const rankList = $('rankList');
 
 setNameBtn.onclick = () => {
   const nick = nicknameInput.value.trim();
-  if (!nick) return alert('ニックネームを入力');
+  if (!nick) return alert('ニックネームを入力してください');
   ws.send(JSON.stringify({ type: 'setName', nickname: nick }));
 };
 
 uploadIconBtn.onclick = async () => {
-  if (!myNickname) return alert('先にニックネームを設定');
+  if (!myNickname) return alert('先にニックネームを設定してください');
   const f = iconFile.files[0];
   if (!f) return alert('ファイルを選んでください');
   const fd = new FormData();
@@ -37,13 +36,22 @@ uploadIconBtn.onclick = async () => {
 tapImage.addEventListener('mousedown', () => sendTap());
 tapImage.addEventListener('touchstart', (e) => { e.preventDefault(); sendTap(); }, { passive: false });
 
-function sendTap() { if (!myNickname) return; ws.send(JSON.stringify({ type: 'tap' })); }
+function sendTap() {
+  if (!myNickname) {
+    appendSystem('タップするにはニックネームを設定してください');
+    return;
+  }
+  ws.send(JSON.stringify({ type: 'tap' }));
+}
 
 sendChatBtn.onclick = sendChat;
 chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
 
 function sendChat() {
-  if (!myNickname) return alert('ニックネームを設定してください');
+  if (!myNickname) {
+    appendSystem('チャットするにはニックネームを設定してください');
+    return;
+  }
   const txt = chatInput.value.trim();
   if (!txt) return;
   ws.send(JSON.stringify({ type: 'chat', text: txt }));
@@ -57,6 +65,9 @@ ws.onmessage = (ev) => {
     renderShop();
     renderRanks(data.ranks || []);
     renderChats(data.chats || []);
+    if (!myNickname) {
+      appendSystem('ニックネームを設定してください');
+    }
     return;
   }
   if (data.type === 'setNameResult') {
@@ -66,6 +77,7 @@ ws.onmessage = (ev) => {
       nicknameInput.value = '';
       appendSystem(`ニックネーム設定: ${myNickname}`);
     } else {
+      myNickname = null;
       if (data.reason === 'inuse') appendSystem('そのニックネームは使用中です');
       else if (data.reason === 'banned') appendSystem('そのニックネームはBANされています');
       else if (data.reason === 'admin_auth') appendSystem('admin認証失敗');
@@ -98,6 +110,7 @@ ws.onmessage = (ev) => {
       appendSystem('あなたはBANされました');
       ws.close();
     }
+    return;
   }
   if (data.type === 'buyResult') {
     appendSystem(data.ok ? '購入成功' : '購入失敗: ' + (data.reason || ''));
