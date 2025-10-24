@@ -75,13 +75,13 @@ ws.onmessage = (ev) => {
     console.log('setNameResult:', data);
     if (data.ok) {
       myNickname = data.nickname;
-      localStorage.setItem('nickname', myNickname); // ✅ 保存！
+      localStorage.setItem('nickname', myNickname);
       meNameSpan.textContent = `あなた: ${myNickname}`;
       nicknameInput.value = '';
       appendSystem(`ニックネーム設定: ${myNickname}`);
     } else {
       myNickname = null;
-      localStorage.removeItem('nickname'); // ✅ 失敗時は削除
+      localStorage.removeItem('nickname');
       if (data.reason === 'inuse') appendSystem('そのニックネームは使用中です');
       else if (data.reason === 'banned') appendSystem('そのニックネームはBANされています');
       else if (data.reason === 'admin_auth') appendSystem('admin認証失敗');
@@ -161,20 +161,4 @@ function addChatMessage(nick, icon, text, ts) {
 }
 
 function appendSystem(text) {
-  chatLog.insertAdjacentHTML('beforeend', `<div class="chat-entry"><div style="width:40px;height:40px;border-radius:50%;background:#ddd;"></div><div><div class="meta"><em>system</em></div><div class="text">${escapeHtml(text)}</div></div></div>`);
-  chatLog.scrollTop = chatLog.scrollHeight;
-}
-
-function escapeHtml(s) {
-  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-// ✅ ページ読み込み時にニックネーム復元！
-window.addEventListener('load', () => {
-  const savedNick = localStorage.getItem('nickname');
-  if (savedNick) {
-    ws.addEventListener('open', () => {
-      ws.send(JSON.stringify({ type: 'setName', nickname: savedNick }));
-    });
-  }
-});
+  chatLog.insertAdjacentHTML('beforeend', `<div class="chat-entry"><div style="width:40px;height:40px;border-radius:50%;background:#ddd;"></div><
